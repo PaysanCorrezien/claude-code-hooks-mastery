@@ -21,61 +21,30 @@ except ImportError:
     pass  # dotenv is optional
 
 
-def get_tts_script_path():
-    """
-    Determine which TTS script to use based on available API keys.
-    Priority order: ElevenLabs > OpenAI > pyttsx3
-    """
-    # Get current script directory and construct utils/tts path
+def get_audio_player_path():
+    """Get the path to the audio player script."""
     script_dir = Path(__file__).parent
-    tts_dir = script_dir / "utils" / "tts"
-    
-    # Check for ElevenLabs API key (highest priority)
-    if os.getenv('ELEVENLABS_API_KEY'):
-        elevenlabs_script = tts_dir / "elevenlabs_tts.py"
-        if elevenlabs_script.exists():
-            return str(elevenlabs_script)
-    
-    # Check for OpenAI API key (second priority)
-    if os.getenv('OPENAI_API_KEY'):
-        openai_script = tts_dir / "openai_tts.py"
-        if openai_script.exists():
-            return str(openai_script)
-    
-    # Fall back to pyttsx3 (no API key required)
-    pyttsx3_script = tts_dir / "pyttsx3_tts.py"
-    if pyttsx3_script.exists():
-        return str(pyttsx3_script)
-    
-    return None
+    audio_player = script_dir / "utils" / "audio" / "audio_player.py"
+    return str(audio_player) if audio_player.exists() else None
 
 
 def announce_notification():
-    """Announce that the agent needs user input."""
+    """Announce that the agent needs user input using pre-generated audio files."""
     try:
-        tts_script = get_tts_script_path()
-        if not tts_script:
-            return  # No TTS scripts available
+        audio_player = get_audio_player_path()
+        if not audio_player:
+            return  # No audio player available
         
-        # Get engineer name if available
-        engineer_name = os.getenv('ENGINEER_NAME', '').strip()
-        
-        # Create notification message with 30% chance to include name
-        if engineer_name and random.random() < 0.3:
-            notification_message = f"{engineer_name}, your agent needs your input"
-        else:
-            notification_message = "Your agent needs your input"
-        
-        # Call the TTS script with the notification message
+        # Use pre-generated notification audio
         subprocess.run([
-            "uv", "run", tts_script, notification_message
+            "uv", "run", audio_player, "notification"
         ], 
         capture_output=True,  # Suppress output
-        timeout=10  # 10-second timeout
+        timeout=5  # 5-second timeout (faster than TTS generation)
         )
         
     except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-        # Fail silently if TTS encounters issues
+        # Fail silently if audio playback encounters issues
         pass
     except Exception:
         # Fail silently for any other errors
